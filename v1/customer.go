@@ -1,5 +1,7 @@
 package v1
 
+
+
 type Customer struct {
 	Owner string `json:"owner"`
 	Nama string `json:"nama"`
