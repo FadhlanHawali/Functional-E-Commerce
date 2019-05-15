@@ -67,7 +67,7 @@ func InitDb(uri string) (*database, error) {
 		status enum('1','2') DEFAULT NULL,
 		PRIMARY KEY (id),
 		FOREIGN KEY fk_barang(id_barang)
-		REFERENCES products(id)
+		REFERENCES products(id),
 		FOREIGN KEY fk_customer(id_customer)
 		REFERENCES customers(id)
 	)`,
