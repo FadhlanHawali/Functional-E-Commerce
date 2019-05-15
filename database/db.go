@@ -26,34 +26,18 @@ func InitDb(uri string) (*database, error) {
 		api_key text DEFAULT NULL,
 		PRIMARY KEY (id)
 	  )`,
-		`
-	CREATE TABLE IF NOT EXISTS stores (
+	`CREATE TABLE IF NOT EXISTS stores (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
 		store_name varchar(128) DEFAULT NULL,
 		address varchar(128) DEFAULT NULL,
 		handphone varchar(13) DEFAULT NULL,
 		bank_number varchar(64) DEFAULT NULL,
-		id_user int(11) DEFAULT NULL,
+		id_user int(11) unsigned NOT NULL,
 		PRIMARY KEY (id),
-		FOREIGN KEY (id_user) REFERENCES users(id)
-	)`,`
-	CREATE TABLE IF NOT EXISTS orders (
-		id int(11) unsigned NOT NULL AUTO_INCREMENT,
-		id_barang int(11) unsigned NOT NULL,
-		id_customer int(11) unsigned NOT NULL,
-		quantity int(11) DEFAULT NULL,
-		total int(11) DEFAULT NULL,
-		status enum('1','2') DEFAULT NULL,
-		PRIMARY KEY (id)
-	)`,`
-	CREATE TABLE IF NOT EXISTS customers (
-		id int(11) unsigned NOT NULL AUTO_INCREMENT,
-		cust_name int(11) DEFAULT NULL,
-		cust_address int(11) DEFAULT NULL,
-		id_store int(11) unsigned NOT NULL,
-		PRIMARY KEY (id)
-	)`,`
-	CREATE TABLE IF NOT EXISTS products (
+		FOREIGN KEY fk_user(id_user)
+		REFERENCES users(id)
+	)`,
+	`CREATE TABLE IF NOT EXISTS products (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
 		prod_name varchar(128) DEFAULT NULL,
 		quantity int(11) DEFAULT NULL,
@@ -61,7 +45,31 @@ func InitDb(uri string) (*database, error) {
 		price int(11) DEFAULT NULL,
 		url_pic varchar(128) DEFAULT NULL,
 		id_store int(11) unsigned NOT NULL,
-		PRIMARY KEY (id)
+		PRIMARY KEY (id),
+		FOREIGN KEY fk_store(id_store)
+		REFERENCES stores(id)
+	)`,
+	`CREATE TABLE IF NOT EXISTS customers (
+		id int(11) unsigned NOT NULL AUTO_INCREMENT,
+		cust_name int(11) DEFAULT NULL,
+		cust_address int(11) DEFAULT NULL,
+		id_store int(11) unsigned NOT NULL,
+		PRIMARY KEY (id),
+		FOREIGN KEY fk_store2(id_store)
+		REFERENCES stores(id)
+	)`,
+	`CREATE TABLE IF NOT EXISTS orders (
+		id int(11) unsigned NOT NULL AUTO_INCREMENT,
+		id_barang int(11) unsigned NOT NULL,
+		id_customer int(11) unsigned NOT NULL,
+		quantity int(11) DEFAULT NULL,
+		total int(11) DEFAULT NULL,
+		status enum('1','2') DEFAULT NULL,
+		PRIMARY KEY (id),
+		FOREIGN KEY fk_barang(id_barang)
+		REFERENCES products(id)
+		FOREIGN KEY fk_customer(id_customer)
+		REFERENCES customers(id)
 	)`,
 	}
 
