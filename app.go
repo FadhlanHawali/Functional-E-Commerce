@@ -10,7 +10,7 @@ import (
 )
 
 func main(){
-	conn, err := database.InitDb("root:password@tcp(127.0.0.1:3306)/commerce")
+	conn, err := database.InitDb("root:pintar123@tcp(127.0.0.1:3306)/")
 	if err != nil {
 		fmt.Errorf("failed to open database: %v", err)
 		return
