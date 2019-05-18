@@ -27,6 +27,7 @@ func ValidateToken(header string) (string,error){
 
 	if token != nil && err == nil {
 		//TODO APA AJA YANG MAU DI CLAIM DARI TOKEN NYA
+
 		//fmt.Println("token verified")
 		//claims := token.Claims.(jwt.MapClaims)
 		//fmt.Println(claims)

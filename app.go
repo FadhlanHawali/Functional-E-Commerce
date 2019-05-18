@@ -14,7 +14,7 @@ import (
 const TokenContextKey = "MyAppToken"
 
 func main(){
-	conn, err := database.InitDb("root:pintar123@tcp(127.0.0.1:3306)/")
+	conn, err := database.InitDb("root:pintar123@tcp(127.0.0.1:3306)/commerce")
 	if err != nil {
 		fmt.Errorf("failed to open database: %v", err)
 		return
@@ -24,6 +24,7 @@ func main(){
 	router := mux.NewRouter()
 	//TODO API APA AJA
 	router.HandleFunc("/api/v1/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
+	router.HandleFunc("/api/v1/user/create",api.CreateUser)
 	//TODO
 	http.Handle("/", router)
 	port := ":8080"

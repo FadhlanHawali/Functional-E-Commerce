@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"golang.org/x/crypto/bcrypt"
 	"github.com/FadhlanHawali/Functional-E-Commerce/utils"
+	"log"
+	"github.com/dgrijalva/jwt-go"
 )
 
 type User struct {
@@ -14,7 +16,7 @@ type User struct {
 	ApiKey string `json:"apiKey"`
 }
 
-func CreateUser(w http.ResponseWriter, r *http.Request){
+func (db *InDB) CreateUser(w http.ResponseWriter, r *http.Request){
 	var user User
 
 	if r.Method != "POST"{
@@ -32,7 +34,24 @@ func CreateUser(w http.ResponseWriter, r *http.Request){
 	}
 
 	user.Password = string(hashedPassword)
+	log.Println(user.Password)
+	jwt := jwt.MapClaims{
+		"email":user.Email,
+	}
+	if user.ApiKey,err = utils.GenerateToken(w,r,jwt);err!=nil{
+		utils.WrapAPIError(w,r,fmt.Sprintf("error generating token. got error %s",err.Error()),http.StatusInternalServerError)
+		return
+	}
+	tx := db.DB.MustBegin()
 
+	if result := tx.MustExec(fmt.Sprintf("insert into users (email,password,api_key) values ('%s','%s','%s');",user.Email,user.Password,user.ApiKey));err!=nil{
+		log.Println(fmt.Sprintf("got result %s ; error %s",result,err.Error()))
+		utils.WrapAPIError(w,r,"error creating new user",http.StatusInternalServerError)
+		return
+	}else {
+		tx.Commit()
+	}
+	tx.Commit()
 
-
+	utils.WrapAPIError(w,r,"success creating new user",http.StatusCreated)
 }
