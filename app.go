@@ -29,6 +29,8 @@ func main(){
 	router := mux.NewRouter()
 	//TODO API APA AJA
 	router.HandleFunc("/api/v1/store/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
+	router.HandleFunc("/api/v1/product/add",WithAuth(http.HandlerFunc(api.AddProduct)))
+	router.HandleFunc("/api/v1/product/list",WithAuth(http.HandlerFunc(api.ListProduct)))
 	router.HandleFunc("/api/v1/user/create",api.CreateUser)
 	//TODO
 	http.Handle("/", router)
