@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/spf13/viper"
 	"github.com/FadhlanHawali/Functional-E-Commerce/v1"
 	"log"
 	"fmt"
@@ -14,7 +15,11 @@ import (
 const TokenContextKey = "MyAppToken"
 
 func main(){
-	conn, err := database.InitDb("root:pintar123@tcp(127.0.0.1:3306)/commerce")
+	viper.SetConfigFile("./config/dev.json")
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+	conn, err := database.InitDb(fmt.Sprintf("%s:%s@tcp(%s:%s)/commerce", viper.Get("db.username"), viper.Get("db.password"), viper.Get("db.host"), viper.Get("db.port")))
 	if err != nil {
 		fmt.Errorf("failed to open database: %v", err)
 		return
@@ -23,11 +28,11 @@ func main(){
 	api := &v1.InDB{DB: conn.GetDB()}
 	router := mux.NewRouter()
 	//TODO API APA AJA
-	router.HandleFunc("/api/v1/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
+	router.HandleFunc("/api/v1/store/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
 	router.HandleFunc("/api/v1/user/create",api.CreateUser)
 	//TODO
 	http.Handle("/", router)
-	port := ":8080"
+	port := fmt.Sprintf(":%s", viper.Get("host.port"))
 	log.Printf("Server Running on port %s",port)
 	log.Fatal(http.ListenAndServe(port, router))
 }
