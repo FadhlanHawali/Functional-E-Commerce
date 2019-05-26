@@ -28,6 +28,8 @@ func main(){
 	api := &v1.InDB{DB: conn.GetDB()}
 	router := mux.NewRouter()
 	//TODO API APA AJA
+	router.HandleFunc("/api/v1/store/{id}/order/{order}", WithAuth(http.HandlerFunc(api.OrderController)))
+	router.HandleFunc("/api/v1/store/{id}/user/{user}", WithAuth(http.HandlerFunc(api.CustomerController)))
 	router.HandleFunc("/api/v1/store/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
 	router.HandleFunc("/api/v1/product/add",WithAuth(http.HandlerFunc(api.AddProduct)))
 	router.HandleFunc("/api/v1/product/list",WithAuth(http.HandlerFunc(api.ListProduct)))
