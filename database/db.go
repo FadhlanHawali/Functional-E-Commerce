@@ -16,8 +16,8 @@ func InitDb(uri string) (*database, error) {
 		log.Fatalln(err)
 	}
 
-	var schema = []string{`
-	CREATE DATABASE IF NOT EXISTS commerce;`,
+	var schema = []string{
+	`CREATE DATABASE IF NOT EXISTS commerce;`,
 	`USE commerce;`,
 	`CREATE TABLE IF NOT EXISTS users (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
@@ -52,6 +52,7 @@ func InitDb(uri string) (*database, error) {
 	`CREATE TABLE IF NOT EXISTS customers (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
 		cust_name int(11) DEFAULT NULL,
+		cust_email varchar(128) NOT NULL,
 		cust_address int(11) DEFAULT NULL,
 		id_store int(11) unsigned NOT NULL,
 		PRIMARY KEY (id),
