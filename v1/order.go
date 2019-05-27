@@ -63,7 +63,6 @@ func (db *InDB) CreateOrder (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var newOrder OrderRepo
-	var barang Product_DB
 	if err := json.NewDecoder(r.Body).Decode(&newOrder); err != nil {
 		utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
 		return
@@ -73,9 +72,12 @@ func (db *InDB) CreateOrder (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tx := db.DB.MustBegin()
-	tx.Select(&barang,fmt.Sprintf("SELECT * FROM products WHERE id = %d AND id_store = %d", newOrder.Id_Barang, id_store))
-	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, barang.Price, "1")
 
+	var barang Product_DB
+	tx.Get(&barang, "SELECT * FROM products WHERE id = ? AND id_store = ?", newOrder.Id_Barang, id_store)
+	total := newOrder.Quantity * barang.Price
+	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, total, "1")
+	tx.Get(&newOrder.Id, "SELECT LAST_INSERT_ID() as id")
 	tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
 	if err := tx.Commit(); err != nil {
 		utils.WrapAPIError(w, r, "error creating new order", http.StatusInternalServerError)
@@ -83,14 +85,12 @@ func (db *InDB) CreateOrder (w http.ResponseWriter, r *http.Request) {
 	}
 
 	result,err := CreatePayment(w,r,newOrder,db);if err!=nil{
-		utils.WrapAPIError(w,r,err.Error(),http.StatusInternalServerError)
+		utils.WrapAPIData(w, r, newOrder, http.StatusAccepted, "success")
 		return
 	}
 
 	utils.WrapAPIData(w,r,result,http.StatusOK,"success")
 	return
-	//utils.WrapAPIData(w, r, newOrder, http.StatusOK, "success")
-	//return
 }
 
 func (db *InDB) OrderController (w http.ResponseWriter, r *http.Request) {
