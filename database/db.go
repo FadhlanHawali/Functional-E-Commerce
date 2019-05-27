@@ -51,9 +51,9 @@ func InitDb(uri string) (*database, error) {
 	)`,
 	`CREATE TABLE IF NOT EXISTS customers (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
-		cust_name int(11) DEFAULT NULL,
+		cust_name varchar(128) DEFAULT NULL,
 		cust_email varchar(128) NOT NULL,
-		cust_address int(11) DEFAULT NULL,
+		cust_address varchar(128) DEFAULT NULL,
 		id_store int(11) unsigned NOT NULL,
 		PRIMARY KEY (id),
 		FOREIGN KEY fk_store2(id_store)

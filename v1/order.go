@@ -39,6 +39,51 @@ func (db *InDB) productAvailable(id_store int, id_barang int, qty int) bool {
 	return false
 }
 
+func (db *InDB) CreateOrder (w http.ResponseWriter, r *http.Request) {
+	id_store, err := strconv.Atoi(mux.Vars(r)["id"]); if err != nil {
+		utils.WrapAPIError(w,r,"error converting string to integer",http.StatusInternalServerError)
+		return
+	}
+	var id_user int
+	if token := r.Context().Value(TokenContextKey); token != nil {
+		tokenMap := token.(jwt.MapClaims)
+		tempId := tokenMap["id"].(float64)
+		id_user = int(tempId)
+	} else {
+		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
+		return
+	}
+	if (!db.isMyStore(id_user, id_store)) {
+		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
+		return
+	}
+
+	if r.Method != "POST" {
+		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		return
+	}
+	var newOrder OrderRepo
+	var barang Product_DB
+	if err := json.NewDecoder(r.Body).Decode(&newOrder); err != nil {
+		utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
+		return
+	}
+	if (!db.productAvailable(id_store, newOrder.Id_Barang, newOrder.Quantity)) {
+		utils.WrapAPIError(w,r,"Product is not available",http.StatusBadRequest)
+		return
+	}
+	tx := db.DB.MustBegin()
+	tx.Select(&barang,fmt.Sprintf("SELECT * FROM products WHERE id = %d AND id_store = %d", newOrder.Id_Barang, id_store))
+	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, barang.Price, "1")
+	tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
+	if err := tx.Commit(); err != nil {
+		utils.WrapAPIError(w, r, "error creating new order", http.StatusInternalServerError)
+		return
+	}
+	utils.WrapAPIData(w, r, newOrder, http.StatusOK, "success")
+	return
+}
+
 func (db *InDB) OrderController (w http.ResponseWriter, r *http.Request) {
 	id_store, err := strconv.Atoi(mux.Vars(r)["id"]); if err != nil {
 		utils.WrapAPIError(w,r,"error converting string to integer",http.StatusInternalServerError)
@@ -58,28 +103,7 @@ func (db *InDB) OrderController (w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method == "POST" {
-		var newOrder OrderRepo
-		var barang Product_DB
-		if err := json.NewDecoder(r.Body).Decode(&newOrder); err != nil {
-			utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
-			return
-		}
-		if (!db.productAvailable(id_store, newOrder.Id_Barang, newOrder.Quantity)) {
-			utils.WrapAPIError(w,r,"Product is not available",http.StatusBadRequest)
-			return
-		}
-		tx := db.DB.MustBegin()
-		tx.Select(&barang,fmt.Sprintf("SELECT * FROM products WHERE id = %d AND id_store = %d", newOrder.Id_Barang, id_store))
-		tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, barang.Price, "1")
-		tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
-		if err := tx.Commit(); err != nil {
-			utils.WrapAPIError(w, r, "error creating new order", http.StatusInternalServerError)
-			return
-		}
-		utils.WrapAPIData(w, r, newOrder, http.StatusOK, "success")
-		return
-	} else if r.Method == "GET" {
+	if r.Method == "GET" {
 		var orders []OrderRepo
 		tx := db.DB.MustBegin()
 		tx.Select(&orders,fmt.Sprintf("SELECT * FROM orders WHERE id_store = %d", id_store))
