@@ -66,6 +66,7 @@ func InitDb(uri string) (*database, error) {
 		quantity int(11) DEFAULT NULL,
 		total int(11) DEFAULT NULL,
 		status enum('1','2') DEFAULT NULL,
+		token_payment varchar(128) DEFAULT NULL,
 		PRIMARY KEY (id),
 		FOREIGN KEY fk_barang(id_barang)
 		REFERENCES products(id),
