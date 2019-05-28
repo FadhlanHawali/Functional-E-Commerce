@@ -1,9 +1,9 @@
 package main
 
 import (
-	"context"
-	"fmt"
 	"log"
+	"fmt"
+	"context"
 	"net/http"
 
 	"github.com/FadhlanHawali/Functional-E-Commerce/database"
@@ -11,6 +11,7 @@ import (
 	"github.com/FadhlanHawali/Functional-E-Commerce/v1"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"github.com/rs/cors"
 )
 
 const TokenContextKey = "MyAppToken"
@@ -44,10 +45,15 @@ func main() {
 	router.HandleFunc("/api/v1/user/create", api.CreateUser)
 	router.HandleFunc("/api/v1/store/order/{idOrder}/user/{idCustomer}/payment/{token}", api.UpdatePayment)
 	//TODO
-	http.Handle("/", router)
+
+	c := cors.New(cors.Options{
+		AllowedOrigins: []string{"http://localhost:8000"},
+		AllowCredentials: true,
+	})
+	handler := c.Handler(router)
 	port := fmt.Sprintf(":%s", viper.Get("host.port"))
-	log.Printf("Server Running on port %s", port)
-	log.Fatal(http.ListenAndServe(port, router))
+	log.Printf("Server Running on port %s",port)
+	log.Fatal(http.ListenAndServe(port, handler))
 }
 
 func WithAuth(next http.Handler) http.HandlerFunc {
