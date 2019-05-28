@@ -28,15 +28,19 @@ func main(){
 	api := &v1.InDB{DB: conn.GetDB()}
 	router := mux.NewRouter()
 	//TODO API APA AJA
-	router.HandleFunc("/api/v1/store/{id}/order", WithAuth(http.HandlerFunc(api.CreateOrder)))
-	router.HandleFunc("/api/v1/store/{id}/order/{order}", WithAuth(http.HandlerFunc(api.OrderController)))
-	router.HandleFunc("/api/v1/store/{id}/user", WithAuth(http.HandlerFunc(api.CustomerRegistration)))
-	router.HandleFunc("/api/v1/store/{id}/user/{user}", WithAuth(http.HandlerFunc(api.CustomerController)))
-	router.HandleFunc("/api/v1/store/create", WithAuth(http.HandlerFunc(api.CreateLapak)))
-	router.HandleFunc("/api/v1/product/add",WithAuth(http.HandlerFunc(api.AddProduct)))
-	router.HandleFunc("/api/v1/product/list",WithAuth(http.HandlerFunc(api.ListProduct)))
-	router.HandleFunc("/api/v1/product/delete/{id}",WithAuth(http.HandlerFunc(api.DeleteProduct)))
-	router.HandleFunc("/api/v1/user/create",api.CreateUser)
+	router.HandleFunc("/api/v1/order", WithStoreAuth(http.HandlerFunc(api.CreateAndListOrder)))
+	router.HandleFunc("/api/v1/order/{order}", WithStoreAuth(http.HandlerFunc(api.OrderController)))
+
+	router.HandleFunc("/api/v1/customer", WithStoreAuth(http.HandlerFunc(api.CreateAndListCustomer)))
+	router.HandleFunc("/api/v1/customer/{customer}", WithStoreAuth(http.HandlerFunc(api.CustomerController)))
+
+	router.HandleFunc("/api/v1/product", WithStoreAuth(http.HandlerFunc(api.CreateAndListProduct)))
+	router.HandleFunc("/api/v1/product/{product}", WithStoreAuth(http.HandlerFunc(api.ProductController)))
+
+	router.HandleFunc("/api/v1/store", WithAuth(http.HandlerFunc(api.CreateLapak)))
+
+	router.HandleFunc("/api/v1/user/login", api.Login)
+	router.HandleFunc("/api/v1/user/create", api.CreateUser)
 	//TODO
 	http.Handle("/", router)
 	port := fmt.Sprintf(":%s", viper.Get("host.port"))
@@ -52,7 +56,26 @@ func WithAuth(next http.Handler) http.HandlerFunc {
 			return
 		}
 
-		token, err := utils.ValidateToken(auth)
+		token, err := utils.ValidateToken(auth, "secret")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusUnauthorized)
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), TokenContextKey, token)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func WithStoreAuth(next http.Handler) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		auth := r.Header.Get("Authorization")
+		if auth == "" {
+			utils.WrapAPIError(w,r,"Authorization Header can't be Empty",http.StatusUnauthorized) // continue without token
+			return
+		}
+
+		token, err := utils.ValidateToken(auth, "storesecr3t")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return

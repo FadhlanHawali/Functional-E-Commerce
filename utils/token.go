@@ -6,16 +6,16 @@ import (
 	"fmt"
 )
 
-func GenerateToken(w http.ResponseWriter,r *http.Request, jwtMap jwt.MapClaims) (string,error){
+func GenerateToken(w http.ResponseWriter,r *http.Request, jwtMap jwt.MapClaims, secret string) (string,error){
 	sign := jwt.NewWithClaims(jwt.SigningMethodHS256,jwtMap)
-	token, err := sign.SignedString([]byte("secret"))
+	token, err := sign.SignedString([]byte(secret))
 	if err != nil {
 		return "",err
 	}
 	return token,nil
 }
 
-func ValidateToken(header string) (jwt.MapClaims,error){
+func ValidateToken(header string, secret string) (jwt.MapClaims,error){
 
 	tokenString := header
 	var claims jwt.MapClaims
@@ -23,7 +23,7 @@ func ValidateToken(header string) (jwt.MapClaims,error){
 		if jwt.GetSigningMethod("HS256") != token.Method {
 			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte("secret"), nil
+		return []byte(secret), nil
 	})
 
 	if token != nil && err == nil {
