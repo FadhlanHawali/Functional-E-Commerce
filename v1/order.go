@@ -1,29 +1,31 @@
 package v1
 
 import (
-	"net/http"
-	"github.com/FadhlanHawali/Functional-E-Commerce/utils"
 	"encoding/json"
-	"github.com/dgrijalva/jwt-go"
 	"fmt"
-	"github.com/gorilla/mux"
+	"net/http"
 	"strconv"
+
+	"github.com/FadhlanHawali/Functional-E-Commerce/utils"
+	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/mux"
 )
+
 type Order struct {
-	Barang Product `json:"barang"`
-	Quantity int `json:"quantity"`
-	Total int `json:"total"`
-	Status string `json:"status"`
+	Barang   Product  `json:"barang"`
+	Quantity int      `json:"quantity"`
+	Total    int      `json:"total"`
+	Status   string   `json:"status"`
 	Customer Customer `json:"customer"`
 }
 
 type OrderRepo struct {
-	Id int `db:"id"`
-	Id_Barang int `db:"id_barang" json:"idBarang"`
-	Quantity int `db:"quantity" json:"quantity"`
-	Status string `db:"status" json:"status"`
-	Total int `db:"total" json:"total"`
-	Id_Customer int `db:"id_customer" json:"idCustomer"`
+	Id          int    `db:"id"`
+	Id_Barang   int    `db:"id_barang" json:"idBarang"`
+	Quantity    int    `db:"quantity" json:"quantity"`
+	Status      string `db:"status" json:"status"`
+	Total       int    `db:"total" json:"total"`
+	Id_Customer int    `db:"id_customer" json:"idCustomer"`
 }
 
 func (db *InDB) productAvailable(id_store int, id_barang int, qty int) bool {
@@ -39,39 +41,39 @@ func (db *InDB) productAvailable(id_store int, id_barang int, qty int) bool {
 	return false
 }
 
-func (db *InDB) CreateAndListOrder (w http.ResponseWriter, r *http.Request) {
+func (db *InDB) CreateAndListOrder(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
 		tempId := tokenMap["id_store"].(float64)
 		id_store = int(tempId)
 	} else {
-		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
+		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
 		return
 	}
 
 	if r.Method == "POST" {
 		CreateOrder(w, r, db, id_store)
 	} else if r.Method == "GET" {
-		ListOrder(w,r,db, id_store)
+		ListOrder(w, r, db, id_store)
 	}
-	utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return
 }
 
-func CreateOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int) {
+func CreateOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int) {
 	if r.Method != "POST" {
-		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
 	var newOrder OrderRepo
 	if err := json.NewDecoder(r.Body).Decode(&newOrder); err != nil {
-		utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
+		utils.WrapAPIError(w, r, "Can't decode request body", http.StatusBadRequest)
 		return
 	}
-	if (!db.productAvailable(id_store, newOrder.Id_Barang, newOrder.Quantity)) {
-		utils.WrapAPIError(w,r,"Product is not available",http.StatusBadRequest)
+	if !db.productAvailable(id_store, newOrder.Id_Barang, newOrder.Quantity) {
+		utils.WrapAPIError(w, r, "Product is not available", http.StatusBadRequest)
 		return
 	}
 	tx := db.DB.MustBegin()
@@ -87,18 +89,19 @@ func CreateOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int
 		return
 	}
 
-	result, err := CreatePayment(w,r,newOrder,db); if err != nil{
+	result, err := CreatePayment(w, r, newOrder, db)
+	if err != nil {
 		utils.WrapAPIData(w, r, newOrder, http.StatusAccepted, "success")
 		return
 	}
 
-	utils.WrapAPIData(w,r,result,http.StatusOK,"success")
+	utils.WrapAPIData(w, r, result, http.StatusOK, "success")
 	return
 }
 
-func ListOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int) {
+func ListOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int) {
 	if r.Method != "GET" {
-		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -106,7 +109,7 @@ func ListOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int) 
 	tx := db.DB.MustBegin()
 	tx.Select(&orderList, "SELECT * FROM orders WHERE id_store = ?", id_store)
 	if err := tx.Commit(); err != nil {
-		utils.WrapAPIError(w,r,"error getting product",http.StatusInternalServerError)
+		utils.WrapAPIError(w, r, "error getting product", http.StatusInternalServerError)
 		return
 	}
 	response := make([]*Order, len(orderList))
@@ -116,30 +119,31 @@ func ListOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int) 
 		var customer Customer
 		db.DB.Select(&customer, "SELECT * FROM customers WHERE id = ?", item.Id_Customer)
 		response[i] = &Order{
-			Barang: barang,
+			Barang:   barang,
 			Quantity: item.Quantity,
-			Total: item.Total,
-			Status: item.Status,
+			Total:    item.Total,
+			Status:   item.Status,
 			Customer: customer,
 		}
 	}
-	utils.WrapAPIData(w,r, response, http.StatusOK, "success")
+	utils.WrapAPIData(w, r, response, http.StatusOK, "success")
 	return
 }
 
-func (db *InDB) OrderController (w http.ResponseWriter, r *http.Request) {
+func (db *InDB) OrderController(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
 		tempId := tokenMap["id_store"].(float64)
 		id_store = int(tempId)
 	} else {
-		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
+		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
 		return
 	}
 
-	id_order, err := strconv.Atoi(mux.Vars(r)["order"]); if err != nil {
-		utils.WrapAPIError(w,r,"error converting string to integer",http.StatusInternalServerError)
+	id_order, err := strconv.Atoi(mux.Vars(r)["order"])
+	if err != nil {
+		utils.WrapAPIError(w, r, "error converting string to integer", http.StatusInternalServerError)
 		return
 	}
 
@@ -150,13 +154,13 @@ func (db *InDB) OrderController (w http.ResponseWriter, r *http.Request) {
 	} else if r.Method == "DELETE" {
 		DeleteOrder(w, r, db, id_store, id_order)
 	}
-	utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return
 }
 
-func GetOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
+func GetOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
 	if r.Method != "GET" {
-		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -164,7 +168,7 @@ func GetOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int, i
 	tx := db.DB.MustBegin()
 	tx.Select(&order, "SELECT * FROM orders WHERE id = ? AND id_store = ?", id_order, id_store)
 	if err := tx.Commit(); err != nil {
-		utils.WrapAPIError(w,r,"error getting product",http.StatusInternalServerError)
+		utils.WrapAPIError(w, r, "error getting product", http.StatusInternalServerError)
 		return
 	}
 
@@ -174,54 +178,54 @@ func GetOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int, i
 	db.DB.Select(&customer, "SELECT * FROM customers WHERE id = ? AND id_store = ?", order.Id_Customer, id_store)
 
 	response := &Order{
-		Barang: barang,
+		Barang:   barang,
 		Quantity: order.Quantity,
-		Total: order.Total,
-		Status: order.Status,
+		Total:    order.Total,
+		Status:   order.Status,
 		Customer: customer,
 	}
 	utils.WrapAPIData(w, r, response, http.StatusOK, "success")
 	return
 }
 
-func UpdateOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
+func UpdateOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
 
 	if r.Method != "PUT" {
-		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
 	var order OrderRepo
 	if err := json.NewDecoder(r.Body).Decode(&order); err != nil {
-		utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
+		utils.WrapAPIError(w, r, "Can't decode request body", http.StatusBadRequest)
 		return
 	}
 	tx := db.DB.MustBegin()
 	tx.MustExec("UPDATE orders SET status = ? WHERE id = ? AND id_store = ?", order.Status, id_order, id_store)
 	if err := tx.Commit(); err != nil {
-		utils.WrapAPIError(w,r,"error updating order status",http.StatusInternalServerError)
+		utils.WrapAPIError(w, r, "error updating order status", http.StatusInternalServerError)
 		return
 	}
 	utils.WrapAPIData(w, r, order, http.StatusOK, "success")
 	return
 }
 
-func DeleteOrder (w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
+func DeleteOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id_order int) {
 	if r.Method != "DELETE" {
-		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
+		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 	var order OrderRepo
 	tx := db.DB.MustBegin()
 	tx.Select(&order, "SELECT * FROM orders WHERE id = ? AND id_store = ?", id_order, id_store)
-	if (order.Status == "1") {
+	if order.Status == "1" {
 		tx.MustExec("UPDATE products SET quantity = quantity + ? WHERE id = ? AND id_store = ?", order.Quantity, order.Id_Barang, id_store)
 	}
 	tx.MustExec("DELETE from orders where id = ? AND id_barang = ? AND id_store = ?", id_order, order.Id_Barang, id_store)
 	if err := tx.Commit(); err != nil {
-		utils.WrapAPIError(w,r,"error delete order",http.StatusInternalServerError)
+		utils.WrapAPIError(w, r, "error delete order", http.StatusInternalServerError)
 		return
 	}
-	utils.WrapAPISuccess(w,r,"success deleting order",http.StatusOK)
+	utils.WrapAPISuccess(w, r, "success deleting order", http.StatusOK)
 	return
 }

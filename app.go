@@ -1,20 +1,21 @@
 package main
 
 import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+
+	"github.com/FadhlanHawali/Functional-E-Commerce/database"
+	"github.com/FadhlanHawali/Functional-E-Commerce/utils"
+	"github.com/FadhlanHawali/Functional-E-Commerce/v1"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
-	"github.com/FadhlanHawali/Functional-E-Commerce/v1"
-	"log"
-	"fmt"
-	"net/http"
-	"github.com/FadhlanHawali/Functional-E-Commerce/database"
-	"context"
-	"github.com/FadhlanHawali/Functional-E-Commerce/utils"
 )
 
 const TokenContextKey = "MyAppToken"
 
-func main(){
+func main() {
 	viper.SetConfigFile("./config/dev.json")
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file, %s", err)
@@ -41,10 +42,11 @@ func main(){
 
 	router.HandleFunc("/api/v1/user/login", api.Login)
 	router.HandleFunc("/api/v1/user/create", api.CreateUser)
+	router.HandleFunc("/api/v1/store/order/{idOrder}/user/{idCustomer}/payment/{token}", api.UpdatePayment)
 	//TODO
 	http.Handle("/", router)
 	port := fmt.Sprintf(":%s", viper.Get("host.port"))
-	log.Printf("Server Running on port %s",port)
+	log.Printf("Server Running on port %s", port)
 	log.Fatal(http.ListenAndServe(port, router))
 }
 
@@ -52,7 +54,7 @@ func WithAuth(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		if auth == "" {
-			utils.WrapAPIError(w,r,"Authorization Header can't be Empty",http.StatusUnauthorized) // continue without token
+			utils.WrapAPIError(w, r, "Authorization Header can't be Empty", http.StatusUnauthorized) // continue without token
 			return
 		}
 
@@ -71,7 +73,7 @@ func WithStoreAuth(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		if auth == "" {
-			utils.WrapAPIError(w,r,"Authorization Header can't be Empty",http.StatusUnauthorized) // continue without token
+			utils.WrapAPIError(w, r, "Authorization Header can't be Empty", http.StatusUnauthorized) // continue without token
 			return
 		}
 
@@ -85,7 +87,6 @@ func WithStoreAuth(next http.Handler) http.HandlerFunc {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
-
 
 //Untuk manggil token nya
 
