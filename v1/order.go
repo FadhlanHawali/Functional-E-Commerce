@@ -75,12 +75,13 @@ func (db *InDB) CreateOrder (w http.ResponseWriter, r *http.Request) {
 	tx := db.DB.MustBegin()
 	tx.Select(&barang,fmt.Sprintf("SELECT * FROM products WHERE id = %d AND id_store = %d", newOrder.Id_Barang, id_store))
 	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, barang.Price, "1")
-
+	tx.Get(&newOrder.Id, "SELECT LAST_INSERT_ID() as id")
 	tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
 	if err := tx.Commit(); err != nil {
 		utils.WrapAPIError(w, r, "error creating new order", http.StatusInternalServerError)
 		return
 	}
+
 
 	result,err := CreatePayment(w,r,newOrder,db);if err!=nil{
 		utils.WrapAPIError(w,r,err.Error(),http.StatusInternalServerError)

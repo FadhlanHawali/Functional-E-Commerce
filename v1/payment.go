@@ -30,13 +30,17 @@ func CreatePayment (w http.ResponseWriter, r *http.Request, order OrderRepo, db 
 	result,err := requestPayment(paymentBytes); if err!=nil{
 		return nil,err
 	}
-
 	tx := db.DB.MustBegin()
 	//TODO id customer
-	tx.MustExec(fmt.Sprintf("UPDATE orders SET token_payment='%s' WHERE id_customer=%d",result.Data.Kode,order.Id_Customer))
-
+	log.Println()
+	//log.Println(fmt.Sprintf("UPDATE orders SET token_payment='%s' WHERE id_customer=%d and id=%d",result.Data.Kode,order.Id_Customer,order.Id))
+	tx.MustExec(fmt.Sprintf("UPDATE orders SET token_payment='%s' WHERE id_customer=%d and id=%d;",result.Data.Kode,order.Id_Customer,order.Id))
+	if err := tx.Commit(); err != nil {
+		utils.WrapAPIError(w, r, "error updating token", http.StatusInternalServerError)
+		return nil,err
+	}
 	return map[string]interface{}{
-		"url":issuePayment(result.Data.Kode),
+		"url":issuePayment(result.Data.Kode,order.Id,order.Id_Customer),
 	},nil
 }
 
@@ -64,7 +68,7 @@ func (db *InDB) UpdatePayment (w http.ResponseWriter, r *http.Request){
 		utils.WrapAPIError(w,r,http.StatusText(http.StatusMethodNotAllowed),http.StatusMethodNotAllowed)
 		return
 	}
-	token := mux.Vars(r)["user"]
+	token := mux.Vars(r)["token"]
 	result,err := checkPayment(token);if err!=nil{
 		utils.WrapAPIError(w,r,"error validating payment",http.StatusInternalServerError)
 		return
@@ -73,18 +77,29 @@ func (db *InDB) UpdatePayment (w http.ResponseWriter, r *http.Request){
 	data := result["data"].(map[string]interface{})
 	isPaid := data["is_paid"].(bool)
 	if isPaid == false{
-		utils.WrapAPIError(w,r,"Bill is not paid yet",http.StatusOK)
+		utils.WrapAPIError(w,r,"Bill is not paid yet",http.StatusBadRequest)
 		return
 	}
 
+	idCustomer := mux.Vars(r)["idCustomer"]
+	idOrder := mux.Vars(r)["idOrder"]
+	tx := db.DB.MustBegin()
+	tx.MustExec("UPDATE orders SET status=2 WHERE id = ? and id_customer = ?", idOrder,idCustomer)
+
+	if err := tx.Commit(); err != nil {
+		utils.WrapAPIError(w, r, "error updating token", http.StatusInternalServerError)
+		return
+	}
+	utils.WrapAPISuccess(w,r,"success do payment",http.StatusOK)
+	return
 	//status,err := updatePayment(db,token);if err!= nil{
 	//
 	//}
 }
 
-func issuePayment (token string) string{
+func issuePayment (token string, idOrder int, idCustomer int) string{
 	//TODO ADD SUCCESS REDIRECT
-	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s",token)
+	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s&successRedirect=http://127.0.0.1:4321/api/v1/store/order/%d/user/%d/payment/%s",token,idOrder,idCustomer,token)
 }
 
 func checkPayment (token string) (map[string]interface{},error) {

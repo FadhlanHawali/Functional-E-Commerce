@@ -37,6 +37,7 @@ func main(){
 	router.HandleFunc("/api/v1/product/list",WithAuth(http.HandlerFunc(api.ListProduct)))
 	router.HandleFunc("/api/v1/product/delete/{id}",WithAuth(http.HandlerFunc(api.DeleteProduct)))
 	router.HandleFunc("/api/v1/user/create",api.CreateUser)
+	router.HandleFunc("/api/v1/store/order/{idOrder}/user/{idCustomer}/payment/{token}",api.UpdatePayment)
 	//TODO
 	http.Handle("/", router)
 	port := fmt.Sprintf(":%s", viper.Get("host.port"))
