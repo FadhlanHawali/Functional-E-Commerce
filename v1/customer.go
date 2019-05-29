@@ -12,6 +12,7 @@ import (
 )
 
 type Customer struct {
+	Id string
 	Email string `json:"email"`
 	Nama string `json:"nama"`
 	AlamatPengiriman string `json:"alamatPengiriman"`
@@ -39,7 +40,7 @@ func (db *InDB) CreateAndListCustomer (w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
@@ -75,6 +76,7 @@ func AddCustomer (w http.ResponseWriter, r *http.Request, db *InDB, id_store int
 	}
 
 	tx.MustExec("INSERT INTO customers (cust_name, cust_address, cust_email, id_store) VALUES (?, ?, ?, ?)", customer.Nama, customer.AlamatPengiriman, customer.Email, id_store)
+	tx.Get(&customer.Id, "SELECT LAST_INSERT_ID() as id")
 	if err := tx.Commit(); err != nil {
 		utils.WrapAPIError(w, r, "error inserting new customer", http.StatusInternalServerError)
 		return
@@ -106,7 +108,7 @@ func (db *InDB) CustomerController (w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)

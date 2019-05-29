@@ -61,6 +61,7 @@ func InitDb(uri string) (*database, error) {
 	)`,
 	`CREATE TABLE IF NOT EXISTS orders (
 		id int(11) unsigned NOT NULL AUTO_INCREMENT,
+		id_store int(11) unsigned NOT NULL,
 		id_barang int(11) unsigned NOT NULL,
 		id_customer int(11) unsigned NOT NULL,
 		quantity int(11) DEFAULT NULL,

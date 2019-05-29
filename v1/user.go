@@ -29,12 +29,18 @@ func (db *InDB) CreateUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
+	tx := db.DB.MustBegin()
+	id := 0
+	tx.Get(&id, "SELECT id FROM users WHERE email = ?", user.Email)
+	if id > 0 {
+		utils.WrapAPIError(w, r, "user already exist", http.StatusBadRequest)
+		return
+	}
+
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost);if err != nil{
 		utils.WrapAPIError(w,r,fmt.Sprintf("got error %s",err.Error()),http.StatusBadRequest)
 	}
 	user.Password = string(hashedPassword)
-	tx := db.DB.MustBegin()
-	var id int
 	tx.MustExec("INSERT INTO users (email, password) VALUES (?, ?)", user.Email, user.Password)
 	tx.Get(&id, "SELECT LAST_INSERT_ID() as id")
 
@@ -53,7 +59,10 @@ func (db *InDB) CreateUser(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	utils.WrapAPIData(w , r, user, http.StatusOK, "success")
+	utils.WrapAPIData(w , r, map[string]interface{} {
+		"Email": user.Email,
+		"ApiKey": user.ApiKey,
+	}, http.StatusOK, "success")
 }
 
 func CheckPasswordHash(password, hash string) bool {
@@ -101,5 +110,8 @@ func (db *InDB) Login(w http.ResponseWriter, r *http.Request){
 	// tx.MustExec(query, user.ApiKey, id)
 
 
-	utils.WrapAPIData(w , r, user, http.StatusOK, "success")
+	utils.WrapAPIData(w , r, map[string]interface{} {
+		"Email": user.Email,
+		"ApiKey": user.ApiKey,
+	}, http.StatusOK, "success")
 }

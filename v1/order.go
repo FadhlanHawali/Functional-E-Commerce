@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -12,20 +13,26 @@ import (
 )
 
 type Order struct {
-	Barang   Product  `json:"barang"`
+	Barang   Product_DB  `json:"barang"`
 	Quantity int      `json:"quantity"`
 	Total    int      `json:"total"`
 	Status   string   `json:"status"`
-	Customer Customer `json:"customer"`
+	Customer CustomerRepo `json:"customer"`
 }
 
+type Cart struct {
+	Id_Barang int `json:"idBarang"`
+	Quantity int `json:"quantity"`
+}
 type OrderRepo struct {
 	Id          int    `db:"id"`
 	Id_Barang   int    `db:"id_barang" json:"idBarang"`
 	Quantity    int    `db:"quantity" json:"quantity"`
 	Status      string `db:"status" json:"status"`
 	Total       int    `db:"total" json:"total"`
+	TokenPayment	sql.NullString	`db:"token_payment"`
 	Id_Customer int    `db:"id_customer" json:"idCustomer"`
+	Id_Store	int    `db:"id_store"`
 }
 
 func (db *InDB) productAvailable(id_store int, id_barang int, qty int) bool {
@@ -45,7 +52,7 @@ func (db *InDB) CreateAndListOrder(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
@@ -54,8 +61,10 @@ func (db *InDB) CreateAndListOrder(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		CreateOrder(w, r, db, id_store)
+		return
 	} else if r.Method == "GET" {
 		ListOrder(w, r, db, id_store)
+		return
 	}
 	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return
@@ -81,7 +90,7 @@ func CreateOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int)
 	var barang Product_DB
 	tx.Get(&barang, "SELECT * FROM products WHERE id = ? AND id_store = ?", newOrder.Id_Barang, id_store)
 	total := newOrder.Quantity * barang.Price
-	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status) VALUES (?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, total, "1")
+	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status, id_store) VALUES (?, ?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, total, "1", id_store)
 	tx.Get(&newOrder.Id, "SELECT LAST_INSERT_ID() as id")
 	tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
 	if err := tx.Commit(); err != nil {
@@ -105,19 +114,24 @@ func ListOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int) {
 		return
 	}
 
-	var orderList []OrderRepo
+	orderList := []OrderRepo{}
 	tx := db.DB.MustBegin()
-	tx.Select(&orderList, "SELECT * FROM orders WHERE id_store = ?", id_store)
-	if err := tx.Commit(); err != nil {
+	err := tx.Select(&orderList, "SELECT * FROM orders WHERE id_store = ?", id_store); if err != nil {
+		fmt.Println(err)
+	}
+
+	err = tx.Commit(); if err != nil {
 		utils.WrapAPIError(w, r, "error getting product", http.StatusInternalServerError)
 		return
 	}
 	response := make([]*Order, len(orderList))
 	for i, item := range orderList {
-		var barang Product
-		db.DB.Select(&barang, "SELECT * FROM products WHERE id = ?", item.Id_Barang)
-		var customer Customer
-		db.DB.Select(&customer, "SELECT * FROM customers WHERE id = ?", item.Id_Customer)
+		var barang Product_DB
+		err := db.DB.Get(&barang, "SELECT * FROM products WHERE id = ?", item.Id_Barang); if err != nil {
+			fmt.Println(err)
+		}
+		var customer CustomerRepo
+		db.DB.Get(&customer, "SELECT * FROM customers WHERE id = ?", item.Id_Customer)
 		response[i] = &Order{
 			Barang:   barang,
 			Quantity: item.Quantity,
@@ -134,7 +148,7 @@ func (db *InDB) OrderController(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
@@ -149,10 +163,13 @@ func (db *InDB) OrderController(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		GetOrder(w, r, db, id_store, id_order)
+		return
 	} else if r.Method == "UPDATE" {
 		UpdateOrder(w, r, db, id_store, id_order)
+		return
 	} else if r.Method == "DELETE" {
 		DeleteOrder(w, r, db, id_store, id_order)
+		return
 	}
 	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return
@@ -172,10 +189,10 @@ func GetOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int, id
 		return
 	}
 
-	var barang Product
-	db.DB.Select(&barang, "SELECT * FROM products WHERE id = ? AND id_store = ?", order.Id_Barang, id_store)
-	var customer Customer
-	db.DB.Select(&customer, "SELECT * FROM customers WHERE id = ? AND id_store = ?", order.Id_Customer, id_store)
+	var barang Product_DB
+	db.DB.Get(&barang, "SELECT * FROM products WHERE id = ? AND id_store = ?", order.Id_Barang, id_store)
+	var customer CustomerRepo
+	db.DB.Get(&customer, "SELECT * FROM customers WHERE id = ? AND id_store = ?", order.Id_Customer, id_store)
 
 	response := &Order{
 		Barang:   barang,

@@ -21,7 +21,7 @@ func main() {
 	if err := viper.ReadInConfig(); err != nil {
 		log.Fatalf("Error reading config file, %s", err)
 	}
-	conn, err := database.InitDb(fmt.Sprintf("%s:%s@tcp(%s:%s)/commerce", viper.Get("db.username"), viper.Get("db.password"), viper.Get("db.host"), viper.Get("db.port")))
+	conn, err := database.InitDb(fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", viper.Get("db.username"), viper.Get("db.password"), viper.Get("db.host"), viper.Get("db.port"), viper.Get("db.name")))
 	if err != nil {
 		fmt.Errorf("failed to open database: %v", err)
 		return
@@ -29,28 +29,23 @@ func main() {
 	defer conn.DB.Close()
 	api := &v1.InDB{DB: conn.GetDB()}
 	router := mux.NewRouter()
-	//TODO API APA AJA
-	router.HandleFunc("/api/v1/order", WithStoreAuth(http.HandlerFunc(api.CreateAndListOrder)))
-	router.HandleFunc("/api/v1/order/{order}", WithStoreAuth(http.HandlerFunc(api.OrderController)))
+	router.HandleFunc("/v1/order", WithStoreAuth(http.HandlerFunc(api.CreateAndListOrder)))
+	router.HandleFunc("/v1/order/{order}", WithStoreAuth(http.HandlerFunc(api.OrderController)))
 
-	router.HandleFunc("/api/v1/customer", WithStoreAuth(http.HandlerFunc(api.CreateAndListCustomer)))
-	router.HandleFunc("/api/v1/customer/{customer}", WithStoreAuth(http.HandlerFunc(api.CustomerController)))
+	router.HandleFunc("/v1/customer", WithStoreAuth(http.HandlerFunc(api.CreateAndListCustomer)))
+	router.HandleFunc("/v1/customer/{customer}", WithStoreAuth(http.HandlerFunc(api.CustomerController)))
 
-	router.HandleFunc("/api/v1/product", WithStoreAuth(http.HandlerFunc(api.CreateAndListProduct)))
-	router.HandleFunc("/api/v1/product/{product}", WithStoreAuth(http.HandlerFunc(api.ProductController)))
+	router.HandleFunc("/v1/product", WithStoreAuth(http.HandlerFunc(api.CreateAndListProduct)))
+	router.HandleFunc("/v1/product/{product}", WithStoreAuth(http.HandlerFunc(api.ProductController)))
 
-	router.HandleFunc("/api/v1/store", WithAuth(http.HandlerFunc(api.CreateLapak)))
+	router.HandleFunc("/v1/store", WithAuth(http.HandlerFunc(api.CreateAndListLapak)))
+	router.HandleFunc("/v1/store/{store}", WithAuth(http.HandlerFunc(api.StoreController)))
 
-	router.HandleFunc("/api/v1/user/login", api.Login)
-	router.HandleFunc("/api/v1/user/create", api.CreateUser)
-	router.HandleFunc("/api/v1/store/order/{idOrder}/user/{idCustomer}/payment/{token}", api.UpdatePayment)
-	//TODO
+	router.HandleFunc("/v1/user/login", api.Login)
+	router.HandleFunc("/v1/user/create", api.CreateUser)
+	router.HandleFunc("/v1/store/order/{idOrder}/user/{idCustomer}/payment/{token}", api.UpdatePayment)
 
-	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:8000"},
-		AllowCredentials: true,
-	})
-	handler := c.Handler(router)
+	handler := cors.AllowAll().Handler(router)
 	port := fmt.Sprintf(":%s", viper.Get("host.port"))
 	log.Printf("Server Running on port %s",port)
 	log.Fatal(http.ListenAndServe(port, handler))
@@ -74,6 +69,7 @@ func WithAuth(next http.Handler) http.HandlerFunc {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
 
 func WithStoreAuth(next http.Handler) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
