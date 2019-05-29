@@ -106,7 +106,7 @@ func (db *InDB) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 func issuePayment(token string, idOrder int, idCustomer int) string {
 	//TODO ADD SUCCESS REDIRECT
 
-	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s&successRedirect=%s:4321/v1/store/order/%d/user/%d/payment/%s", token, viper.Get("host.ip"), idOrder, idCustomer, token)
+	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s&successRedirect=http://%s:4321/v1/store/order/%d/user/%d/payment/%s", token, viper.Get("host.ip"), idOrder, idCustomer, token)
 }
 
 func checkPayment(token string) (map[string]interface{}, error) {
