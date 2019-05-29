@@ -100,7 +100,7 @@ func CreateOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int)
 
 	result, err := CreatePayment(w, r, newOrder, db)
 	if err != nil {
-		utils.WrapAPIData(w, r, newOrder, http.StatusAccepted, "success")
+		utils.WrapAPIData(w, r, err.Error(), http.StatusAccepted, "success")
 		return
 	}
 

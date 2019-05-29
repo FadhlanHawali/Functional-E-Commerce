@@ -35,8 +35,13 @@ func CreatePayment(w http.ResponseWriter, r *http.Request, order OrderRepo, db *
 	}
 	tx := db.DB.MustBegin()
 	//TODO id customer
-	tx.MustExec(fmt.Sprintf("UPDATE orders SET token_payment='%s' WHERE id=%d", result.Data.Kode, order.Id))
-
+	log.Println("ID",order.Id)
+	log.Println("ID Cust",order.Id_Customer)
+	tx.MustExec(fmt.Sprintf("UPDATE orders SET token_payment='%s' WHERE id=%d and id_customer=%d", result.Data.Kode, order.Id,order.Id_Customer))
+	if err := tx.Commit(); err != nil {
+		utils.WrapAPIError(w, r, "error creating new order", http.StatusInternalServerError)
+		return nil,err
+	}
 	return map[string]interface{}{
 		"url": issuePayment(result.Data.Kode, order.Id, order.Id_Customer),
 	}, nil
@@ -66,12 +71,14 @@ func (db *InDB) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 		utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
+	log.Println("Update Payment Jalan")
 	token := mux.Vars(r)["token"]
 	result, err := checkPayment(token)
 	if err != nil {
 		utils.WrapAPIError(w, r, "error validating payment", http.StatusInternalServerError)
 		return
 	}
+	log.Println("RESULT : ",result)
 
 	data := result["data"].(map[string]interface{})
 	isPaid := data["is_paid"].(bool)
@@ -99,7 +106,7 @@ func (db *InDB) UpdatePayment(w http.ResponseWriter, r *http.Request) {
 func issuePayment(token string, idOrder int, idCustomer int) string {
 	//TODO ADD SUCCESS REDIRECT
 
-	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s&successRedirect=http://%s/api/v1/store/order/%d/user/%d/payment/%s", token, viper.Get("host.ip"), idOrder, idCustomer, token)
+	return fmt.Sprintf("https://arta.ruangkarya.id/pay?paymentCode=%s&successRedirect=http://%s:4321/v1/store/order/%d/user/%d/payment/%s", token, viper.Get("host.ip"), idOrder, idCustomer, token)
 }
 
 func checkPayment(token string) (map[string]interface{}, error) {
