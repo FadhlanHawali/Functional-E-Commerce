@@ -90,6 +90,7 @@ func CreateOrder(w http.ResponseWriter, r *http.Request, db *InDB, id_store int)
 	var barang Product_DB
 	tx.Get(&barang, "SELECT * FROM products WHERE id = ? AND id_store = ?", newOrder.Id_Barang, id_store)
 	total := newOrder.Quantity * barang.Price
+	newOrder.Total = total
 	tx.MustExec("INSERT INTO orders (id_barang, id_customer, quantity, total, status, id_store) VALUES (?, ?, ?, ?, ?, ?)", newOrder.Id_Barang, newOrder.Id_Customer, newOrder.Quantity, total, "1", id_store)
 	tx.Get(&newOrder.Id, "SELECT LAST_INSERT_ID() as id")
 	tx.MustExec("UPDATE products SET quantity = quantity - ? WHERE id = ? and quantity > 0", newOrder.Quantity, newOrder.Id_Barang)
