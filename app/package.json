@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "buefy": "^0.7.6",
+    "v-clipboard": "^2.2.2",
     "vue": "^2.5.2",
     "vue-router": "^3.0.1"
   },

@@ -1,7 +1,7 @@
 <template>
-    <div class="container is-widescreen">
+    <div class="container">
         <a class="button is-primary" @click="display = true">Create Store</a>
-        <section v-if="display">
+        <section v-if="display" style="padding: 20px;">
             <b-field label="Store Name">
                 <b-input v-model="form.name"></b-input>
             </b-field>
@@ -24,7 +24,7 @@
         <b-table
             :data="list"
             :striped="true"
-            :hoverable="true">
+            :hoverable="true" style="padding-top: 35px;">
             <template slot-scope="props">
                 <b-table-column field="id" label="ID" width="40" numeric>
                     {{ props.row.Id }}
@@ -85,7 +85,7 @@ export default {
     },
     methods: {
         changeKey(id) {
-            axios.get('http://localhost:8080/v1/store/'+id, {
+            axios.get('/api/v1/store/'+id, {
                 headers: {
                     "Authorization": window.sessionStorage.getItem('access_token')
                 }
@@ -96,7 +96,7 @@ export default {
             .catch(err => console.log(err))
         },
         deleteStore(id) {
-            axios.delete('http://localhost:8080/v1/store/'+id, {
+            axios.delete('/api/v1/store/'+id, {
                 headers: {
                     "Authorization": window.sessionStorage.getItem('access_token')
                 }
@@ -107,7 +107,7 @@ export default {
             .catch(err => console.log(err))
         },
         create() {
-            axios.post('http://localhost:8080/v1/store', {
+            axios.post('/api/v1/store', {
                 namaLapak: this.form.name,
                 alamat: this.form.address,
                 telepon: this.form.contact,
@@ -132,11 +132,11 @@ export default {
                     value: text,
                     disabled: true,
                 },
-                onConfirm: (value) => this.$toast.open(`Make sure to copy api_key to somewhere secure`)
+                onConfirm: (value) => {this.$clipboard(value);this.$toast.open(`Copied!`)}
             })
         },
         fetch() {
-            axios.get('http://localhost:8080/v1/store', {
+            axios.get('/api/v1/store', {
                 headers: {
                     "Authorization": window.sessionStorage.getItem('access_token')
                 }
@@ -155,3 +155,6 @@ export default {
     },
 }
 </script>
+<style scoped>
+
+</style>
