@@ -19,6 +19,10 @@ type Order struct {
 	Customer Customer `json:"customer"`
 }
 
+type Cart struct {
+	Id_Barang int `json:"idBarang"`
+	Quantity int `json:"quantity"`
+}
 type OrderRepo struct {
 	Id          int    `db:"id"`
 	Id_Barang   int    `db:"id_barang" json:"idBarang"`
@@ -45,7 +49,7 @@ func (db *InDB) CreateAndListOrder(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
@@ -54,8 +58,10 @@ func (db *InDB) CreateAndListOrder(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "POST" {
 		CreateOrder(w, r, db, id_store)
+		return
 	} else if r.Method == "GET" {
 		ListOrder(w, r, db, id_store)
+		return
 	}
 	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return
@@ -134,7 +140,7 @@ func (db *InDB) OrderController(w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w, r, "invalid token", http.StatusBadRequest)
@@ -149,10 +155,13 @@ func (db *InDB) OrderController(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "GET" {
 		GetOrder(w, r, db, id_store, id_order)
+		return
 	} else if r.Method == "UPDATE" {
 		UpdateOrder(w, r, db, id_store, id_order)
+		return
 	} else if r.Method == "DELETE" {
 		DeleteOrder(w, r, db, id_store, id_order)
+		return
 	}
 	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 	return

@@ -14,7 +14,7 @@ func (db *InDB) CreateAndListProduct (w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
@@ -22,16 +22,20 @@ func (db *InDB) CreateAndListProduct (w http.ResponseWriter, r *http.Request) {
 	}
 	if r.Method == "POST" {
 		AddProduct(w, r, db, id_store)
+		return
 	} else if (r.Method == "GET") {
 		ListProduct(w, r, db, id_store)
+		return
 	}
+	utils.WrapAPIError(w, r, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	return
 }
 
 func (db *InDB) ProductController (w http.ResponseWriter, r *http.Request) {
 	var id_store int
 	if token := r.Context().Value(TokenContextKey); token != nil {
 		tokenMap := token.(jwt.MapClaims)
-		tempId := tokenMap["id_store"].(float64)
+		tempId := tokenMap["store_id"].(float64)
 		id_store = int(tempId)
 	} else {
 		utils.WrapAPIError(w,r,"invalid token",http.StatusBadRequest)
@@ -45,6 +49,7 @@ func (db *InDB) ProductController (w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "DELETE" {
 		DeleteProduct(w, r, db, id_store, id_product)
+		return
 	}
 }
 
@@ -60,6 +65,8 @@ func AddProduct (w http.ResponseWriter, r *http.Request, db *InDB, id_store int)
 		utils.WrapAPIError(w,r,"Can't decode request body",http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println(product)
 
 	tx := db.DB.MustBegin()
 	tx.MustExec("INSERT INTO products (prod_name,quantity,description,price,url_pic,id_store) VALUES (?, ? ,? , ?, ?, ?)", product.NamaBarang, product.Quantity, product.Deskripsi, product.Harga, product.UrlGambar, id_store)
@@ -78,7 +85,7 @@ func ListProduct (w http.ResponseWriter, r *http.Request, db *InDB, id_store int
 		return
 	}
 
-	var product []Product_DB
+	product := []Product_DB{}
 
 	tx := db.DB.MustBegin()
 	tx.Select(&product, "SELECT * FROM products WHERE id_store = ?",id_store)
@@ -117,10 +124,10 @@ type Product struct {
 
 type Product_DB struct {
 	Id int `db:"id"`
-	Prod_Name string `db:"prod_name"`
-	Quantity int `db:"quantity"`
-	Description string `db:"description"`
-	Price int `db:"price"`
-	Url_Pic string `db:"url_pic"`
+	Prod_Name string `db:"prod_name" json:"namaBarang"`
+	Quantity int `db:"quantity" json:"quantity"`
+	Description string `db:"description" json:"deskripsi"`
+	Price int `db:"price" json:"harga"`
+	Url_Pic string `db:"url_pic" json:"urlGambar"`
 	Id_Store int `db:"id_store"`
 }
